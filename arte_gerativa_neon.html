@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinfonia Neon - Gerador de Arte Interativa</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Fonte Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        darkBg: '#09090b',
+                        cardBg: 'rgba(24, 24, 27, 0.75)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos customizados e animações */
+        body {
+            background-color: #09090b;
+            color: #f4f4f5;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        canvas {
+            touch-action: none;
+        }
+
+        /* Vidro fosco para interface de controle */
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Personalização dos Sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            height: 6px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #a855f7;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.8);
+            transition: transform 0.1s ease, background 0.2s ease;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #c084fc;
+        }
+
+        /* Efeito Glow */
+        .glow-text {
+            text-shadow: 0 0 12px rgba(168, 85, 247, 0.6);
+        }
+
+        /* Custom Scrollbar no menu de controles se necessário */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative font-sans">
+
+    <!-- Canvas de Fundo Interativo -->
+    <canvas id="canvas" class="absolute inset-0 w-full h-full z-0"></canvas>
+
+    <!-- Cabeçalho Superior -->
+    <header class="absolute top-4 left-4 right-4 z-10 flex justify-between items-center pointer-events-none">
+        <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-3 pointer-events-auto shadow-2xl">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 via-pink-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-sm tracking-wide bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent glow-text">
+                    SINFONIA NEON
+                </h1>
+                <p class="text-[10px] text-zinc-400 font-medium">Arte Gerativa Interativa</p>
+            </div>
+        </div>
+
+        <!-- Ações Rápidas -->
+        <div class="flex items-center gap-2 pointer-events-auto">
+            <button id="btn-clear" class="glass-panel p-2.5 rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white transition-all shadow-lg active:scale-95" title="Limpar Tela">
+                <i data-lucide="trash-2" class="w-5 h-5"></i>
+            </button>
+            <button id="btn-burst" class="glass-panel px-3 py-2.5 rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white transition-all shadow-lg flex items-center gap-1.5 text-xs font-semibold active:scale-95">
+                <i data-lucide="zap" class="w-4 h-4 text-amber-400 fill-amber-400"></i>
+                <span class="hidden sm:inline">Explosão</span>
+            </button>
+            <button id="btn-toggle-panel" class="glass-panel p-2.5 rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white transition-all shadow-lg active:scale-95" title="Menu de Configurações">
+                <i data-lucide="sliders" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Instrução Centralizada (Esconde ao interagir) -->
+    <div id="instruction" class="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-700 opacity-100 z-5">
+        <div class="glass-panel px-6 py-4 rounded-3xl text-center max-w-xs sm:max-w-md shadow-2xl border border-white/10">
+            <i data-lucide="mouse-pointer-click" class="w-8 h-8 text-purple-400 mx-auto mb-2 animate-bounce"></i>
+            <p class="text-sm font-medium text-zinc-200">Clique ou arraste o mouse/toque na tela</p>
+            <p class="text-xs text-zinc-400 mt-1">Crie padrões de luz e efeitos visuais vibrantes em tempo real.</p>
+        </div>
+    </div>
+
+    <!-- Painel Lateral de Controle (Configurações) -->
+    <aside id="controls-panel" class="absolute top-20 right-4 z-20 w-80 glass-panel rounded-3xl p-5 shadow-2xl transition-all duration-300 transform translate-x-0 sm:translate-x-0 opacity-100 max-h-[calc(100vh-6rem)] overflow-y-auto">
+        <div class="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+            <div class="flex items-center gap-2">
+                <i data-lucide="settings-2" class="w-4 h-4 text-purple-400"></i>
+                <h2 class="text-sm font-semibold text-zinc-100">Controles do Pincel</h2>
+            </div>
+            <button id="btn-close-panel" class="text-zinc-400 hover:text-white transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <div class="space-y-5 text-xs">
+            <!-- Modo de Efeito -->
+            <div>
+                <label class="text-zinc-300 font-medium mb-2 block flex items-center justify-between">
+                    <span>Estilo das Partículas</span>
+                </label>
+                <div class="grid grid-cols-3 gap-1.5 bg-black/30 p-1 rounded-xl border border-white/5">
+                    <button data-mode="neon" class="mode-btn px-2 py-1.5 rounded-lg font-medium text-center bg-purple-600 text-white shadow-sm transition-all">Neon</button>
+                    <button data-mode="fireworks" class="mode-btn px-2 py-1.5 rounded-lg font-medium text-center text-zinc-400 hover:text-white transition-all">Fogo</button>
+                    <button data-mode="galaxy" class="mode-btn px-2 py-1.5 rounded-lg font-medium text-center text-zinc-400 hover:text-white transition-all">Galáxia</button>
+                </div>
+            </div>
+
+            <!-- Paleta de Cores -->
+            <div>
+                <label class="text-zinc-300 font-medium mb-2 block">Paleta de Cores</label>
+                <div class="grid grid-cols-4 gap-2">
+                    <button data-palette="rainbow" class="palette-btn h-8 rounded-xl bg-gradient-to-r from-red-500 via-green-500 to-blue-500 ring-2 ring-purple-500 transition-all" title="Arco-Íris"></button>
+                    <button data-palette="cyberpunk" class="palette-btn h-8 rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 transition-all opacity-70 hover:opacity-100" title="Cyberpunk"></button>
+                    <button data-palette="fire" class="palette-btn h-8 rounded-xl bg-gradient-to-r from-amber-500 via-orange-600 to-red-600 transition-all opacity-70 hover:opacity-100" title="Fogo"></button>
+                    <button data-palette="matrix" class="palette-btn h-8 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-700 transition-all opacity-70 hover:opacity-100" title="Matriz"></button>
+                </div>
+            </div>
+
+            <!-- Slider Quantidade -->
+            <div>
+                <div class="flex justify-between text-zinc-300 mb-1.5 font-medium">
+                    <span>Quantidade por Toque</span>
+                    <span id="val-count" class="text-purple-400 font-bold">12</span>
+                </div>
+                <input type="range" id="slider-count" min="2" max="40" value="12" class="w-full">
+            </div>
+
+            <!-- Slider Velocidade -->
+            <div>
+                <div class="flex justify-between text-zinc-300 mb-1.5 font-medium">
+                    <span>Velocidade das Partículas</span>
+                    <span id="val-speed" class="text-purple-400 font-bold">4.0</span>
+                </div>
+                <input type="range" id="slider-speed" min="1" max="10" step="0.5" value="4" class="w-full">
+            </div>
+
+            <!-- Slider Tamanho -->
+            <div>
+                <div class="flex justify-between text-zinc-300 mb-1.5 font-medium">
+                    <span>Tamanho do Raio</span>
+                    <span id="val-size" class="text-purple-400 font-bold">6px</span>
+                </div>
+                <input type="range" id="slider-size" min="2" max="20" value="6" class="w-full">
+            </div>
+
+            <!-- Slider Rastro (Fade) -->
+            <div>
+                <div class="flex justify-between text-zinc-300 mb-1.5 font-medium">
+                    <span>Efeito de Rastro</span>
+                    <span id="val-trail" class="text-purple-400 font-bold">Médio</span>
+                </div>
+                <input type="range" id="slider-trail" min="0.05" max="0.4" step="0.05" value="0.15" class="w-full">
+            </div>
+
+            <!-- Toggles de Recursos -->
+            <div class="pt-2 border-t border-white/10 space-y-3">
+                <label class="flex items-center justify-between cursor-pointer">
+                    <span class="text-zinc-300 font-medium">Conectar Partículas</span>
+                    <input type="checkbox" id="chk-connect" class="sr-only peer" checked>
+                    <div class="w-9 h-5 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 relative"></div>
+                </label>
+
+                <label class="flex items-center justify-between cursor-pointer">
+                    <span class="text-zinc-300 font-medium">Gravidade do Centro</span>
+                    <input type="checkbox" id="chk-gravity" class="sr-only peer">
+                    <div class="w-9 h-5 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 relative"></div>
+                </label>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Rodapé Informativo -->
+    <footer class="absolute bottom-4 left-4 z-10 pointer-events-none text-[11px] text-zinc-500 hidden sm:block">
+        <p>Pressione <span class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">Espaço</span> para explosão central</p>
+    </footer>
+
+    <!-- Código JavaScript Principal -->
+    <script>
+        // Inicialização de Ícones Lucide
+        lucide.createIcons();
+
+        // Canvas e Contexto
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Configurações do Estado do App
+        const config = {
+            count: 12,
+            speed: 4,
+            size: 6,
+            trail: 0.15,
+            mode: 'neon', // 'neon', 'fireworks', 'galaxy'
+            palette: 'rainbow', // 'rainbow', 'cyberpunk', 'fire', 'matrix'
+            connect: true,
+            gravity: false,
+            colorIndex: 0
+        };
+
+        // Paletas de Cores HSL ou Hex
+        const palettes = {
+            rainbow: () => `hsl(${config.colorIndex++ % 360}, 100%, 60%)`,
+            cyberpunk: () => {
+                const colors = ['#ff007f', '#00f0ff', '#7000ff', '#ff003c'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            },
+            fire: () => {
+                const colors = ['#ff1a00', '#ff7400', '#ffae00', '#ffff00'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            },
+            matrix: () => {
+                const colors = ['#00ff66', '#00cc44', '#33ff99', '#009933'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+        };
+
+        // Lista de Partículas Ativas
+        let particles = [];
+        let mouse = { x: null, y: null, isPressed: false };
+        let hasInteracted = false;
+
+        // Redimensionar Canvas mantendo proporções
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Classe da Partícula
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color || palettes[config.palette]();
+                this.size = Math.random() * config.size + 1;
+                
+                // Ângulo e velocidade baseados no modo
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * config.speed + 0.5;
+
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+
+                this.alpha = 1;
+                this.decay = Math.random() * 0.015 + 0.008; // Taxa de desaparecimento
+                this.friction = 0.98; // Resistência do ar
+            }
+
+            update() {
+                // Física base do movimento
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+
+                // Modificadores por Modo
+                if (config.mode === 'fireworks') {
+                    this.vy += 0.08; // Efeito da gravidade para baixo
+                } else if (config.mode === 'galaxy') {
+                    // Movimento orbital suave
+                    const dx = canvas.width / 2 - this.x;
+                    const dy = canvas.height / 2 - this.y;
+                    this.vx += dx * 0.0002;
+                    this.vy += dy * 0.0002;
+                }
+
+                if (config.gravity && mouse.x !== null) {
+                    // Atração ao ponteiro do mouse
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < 300) {
+                        this.vx += (dx / dist) * 0.2;
+                        this.vy += (dy / dist) * 0.2;
+                    }
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(this.alpha, 0);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                
+                // Efeito Neon Glow
+                ctx.shadowBlur = this.size * 2.5;
+                ctx.shadowColor = this.color;
+                
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Criar lote de partículas
+        function addParticles(x, y, count = config.count) {
+            hideInstruction();
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y));
+            }
+        }
+
+        // Esconder mensagem inicial
+        function hideInstruction() {
+            if (!hasInteracted) {
+                hasInteracted = true;
+                const inst = document.getElementById('instruction');
+                inst.classList.add('opacity-0');
+                setTimeout(() => inst.style.display = 'none', 700);
+            }
+        }
+
+        // Desenhar linhas conectando partículas próximas
+        function drawConnections() {
+            if (!config.connect) return;
+
+            const maxDistance = 90;
+            const length = particles.length;
+
+            for (let i = 0; i < length; i++) {
+                for (let j = i + 1; j < length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist < maxDistance) {
+                        const alpha = (1 - dist / maxDistance) * particles[i].alpha * particles[j].alpha * 0.4;
+                        ctx.save();
+                        ctx.globalAlpha = alpha;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = particles[i].color;
+                        ctx.lineWidth = 0.8;
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }
+            }
+        }
+
+        // Loop principal de Animação
+        function animate() {
+            // Fundo semi-transparente para criar o rastro glow
+            ctx.fillStyle = `rgba(9, 9, 11, ${config.trail})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Se o mouse estiver pressionado, continua gerando partículas
+            if (mouse.isPressed && mouse.x !== null) {
+                addParticles(mouse.x, mouse.y, Math.ceil(config.count / 3));
+            }
+
+            // Atualiza e desenha partículas
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+
+                // Remover partículas mortas
+                if (particles[i].alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            drawConnections();
+
+            requestAnimationFrame(animate);
+        }
+
+        // --- EVENTOS DE INTERAÇÃO DO USUÁRIO ---
+
+        // Mouse
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            if (mouse.isPressed) {
+                addParticles(mouse.x, mouse.y, 2);
+            }
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            // Evita criar partículas ao clicar nos painéis de controle da UI
+            if (e.target.closest('#controls-panel') || e.target.closest('header')) return;
+            mouse.isPressed = true;
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            addParticles(mouse.x, mouse.y, config.count * 1.5);
+        });
+
+        window.addEventListener('mouseup', () => mouse.isPressed = false);
+
+        // Touch (Dispositivos Móveis)
+        window.addEventListener('touchmove', (e) => {
+            if (e.target.closest('#controls-panel') || e.target.closest('header')) return;
+            const touch = e.touches[0];
+            mouse.x = touch.clientX;
+            mouse.y = touch.clientY;
+            addParticles(mouse.x, mouse.y, 2);
+        }, { passive: true });
+
+        window.addEventListener('touchstart', (e) => {
+            if (e.target.closest('#controls-panel') || e.target.closest('header')) return;
+            const touch = e.touches[0];
+            mouse.x = touch.clientX;
+            mouse.y = touch.clientY;
+            addParticles(mouse.x, mouse.y, config.count * 1.5);
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => mouse.isPressed = false);
+
+        // Teclado (Atalho para Explosão com Espaço)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                addParticles(cx, cy, 100);
+            }
+        });
+
+        // --- CONTROLES DA INTERFACE (UI) ---
+
+        // Elementos UI
+        const sliderCount = document.getElementById('slider-count');
+        const sliderSpeed = document.getElementById('slider-speed');
+        const sliderSize = document.getElementById('slider-size');
+        const sliderTrail = document.getElementById('slider-trail');
+
+        const valCount = document.getElementById('val-count');
+        const valSpeed = document.getElementById('val-speed');
+        const valSize = document.getElementById('val-size');
+        const valTrail = document.getElementById('val-trail');
+
+        const chkConnect = document.getElementById('chk-connect');
+        const chkGravity = document.getElementById('chk-gravity');
+
+        const btnClear = document.getElementById('btn-clear');
+        const btnBurst = document.getElementById('btn-burst');
+        const btnTogglePanel = document.getElementById('btn-toggle-panel');
+        const btnClosePanel = document.getElementById('btn-close-panel');
+        const controlsPanel = document.getElementById('controls-panel');
+
+        // Atualização dos Sliders
+        sliderCount.addEventListener('input', (e) => {
+            config.count = parseInt(e.target.value);
+            valCount.textContent = config.count;
+        });
+
+        sliderSpeed.addEventListener('input', (e) => {
+            config.speed = parseFloat(e.target.value);
+            valSpeed.textContent = config.speed.toFixed(1);
+        });
+
+        sliderSize.addEventListener('input', (e) => {
+            config.size = parseInt(e.target.value);
+            valSize.textContent = `${config.size}px`;
+        });
+
+        sliderTrail.addEventListener('input', (e) => {
+            config.trail = parseFloat(e.target.value);
+            const labels = { 0.05: 'Longo', 0.15: 'Médio', 0.25: 'Curto', 0.4: 'Nenhum' };
+            valTrail.textContent = labels[config.trail] || `${config.trail}`;
+        });
+
+        // Checkboxes
+        chkConnect.addEventListener('change', (e) => config.connect = e.target.checked);
+        chkGravity.addEventListener('change', (e) => config.gravity = e.target.checked);
+
+        // Seleção de Modo
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.mode-btn').forEach(b => {
+                    b.classList.remove('bg-purple-600', 'text-white', 'shadow-sm');
+                    b.classList.add('text-zinc-400');
+                });
+                btn.classList.add('bg-purple-600', 'text-white', 'shadow-sm');
+                btn.classList.remove('text-zinc-400');
+                config.mode = btn.dataset.mode;
+            });
+        });
+
+        // Seleção de Paleta
+        document.querySelectorAll('.palette-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.palette-btn').forEach(b => {
+                    b.classList.remove('ring-2', 'ring-purple-500', 'opacity-100');
+                    b.classList.add('opacity-70');
+                });
+                btn.classList.add('ring-2', 'ring-purple-500', 'opacity-100');
+                btn.classList.remove('opacity-70');
+                config.palette = btn.dataset.palette;
+            });
+        });
+
+        // Botões de Ação Rápida
+        btnClear.addEventListener('click', () => {
+            particles = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        btnBurst.addEventListener('click', () => {
+            const x = mouse.x || canvas.width / 2;
+            const y = mouse.y || canvas.height / 2;
+            addParticles(x, y, 80);
+        });
+
+        // Abrir/Fechar Painel
+        function togglePanel() {
+            controlsPanel.classList.toggle('translate-x-0');
+            controlsPanel.classList.toggle('translate-x-full');
+            controlsPanel.classList.toggle('opacity-0');
+            controlsPanel.classList.toggle('pointer-events-none');
+        }
+
+        btnTogglePanel.addEventListener('click', togglePanel);
+        btnClosePanel.addEventListener('click', togglePanel);
+
+        // Iniciar Animação após carregamento da página
+        window.onload = () => {
+            animate();
+        };
+    </script>
+</body>
+</html>
